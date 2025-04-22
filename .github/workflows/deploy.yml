@@ -1,0 +1,32 @@
+name: Deploy files via SSH
+
+on:
+  push:
+    branches:
+      - 'master'
+
+jobs:
+  deploy:
+    name: Deploy on server
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4.2.2
+
+      - name: Set up SSH agent and rsync files
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_KEY }}
+          log-public-key: false
+
+      - name: Upload files via rsync
+        run: |
+          rsync -az --no-times --no-perms --delete \
+            -e "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" \
+            --exclude '.git/' \
+            --exclude '.github/' \
+            --exclude 'README.md' \
+            --exclude '.gitignore' \
+            --exclude '.ssh/' \
+            ./ \
+            ${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:~/
