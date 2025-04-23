@@ -23,7 +23,7 @@ $monthNames = [
 function findCoverImage(string $folderPath, string $relativeUrlPrefix = ''): ?string {
     $extensions = ['png', 'jpg', 'jpeg', 'webp', 'gif'];
     foreach ($extensions as $ext) {
-        $coverPath = $folderPath . '/cover.' . $ext;
+        $coverPath = $folderPath . 'cover.' . $ext;
         if (file_exists($coverPath)) {
             return $relativeUrlPrefix . 'cover.' . $ext;
         }
@@ -32,20 +32,35 @@ function findCoverImage(string $folderPath, string $relativeUrlPrefix = ''): ?st
 }
 
 if (is_dir($baseDir) && $dh = opendir($baseDir)) {
-    while (($folder = readdir($dh)) !== false) {
-        $path = $baseDir . $folder;
-        if ($folder === '.' || $folder === '..' || !is_dir($path)) continue;
-        $infoFile = $path . '/info.json';
-        if (file_exists($infoFile)) {
-            $data = json_decode(file_get_contents($infoFile), true);
-            if ($data && isset($data['slug'])) {
-                $data['folder'] = $folder;
-                $restaurants[] = $data;
-            }
+    while (($file = readdir($dh)) !== false) {
+        $path = $baseDir . $file;
+        if (!preg_match('/\.json$/', $file)) continue;
+
+        $data = json_decode(file_get_contents($path), true);
+        if ($data && isset($data['slug'])) {
+            $data['folder'] = basename($file, '.json');
+            $restaurants[] = $data;
         }
     }
     closedir($dh);
 }
+
+// Apply sorting
+$sortBy = $_GET['sort'] ?? 'date_desc';
+usort($restaurants, function ($a, $b) use ($sortBy) {
+    switch ($sortBy) {
+        case 'date_asc':
+            return strtotime($a['visitDate'] ?? '') <=> strtotime($b['visitDate'] ?? '');
+        case 'date_desc':
+            return strtotime($b['visitDate'] ?? '') <=> strtotime($a['visitDate'] ?? '');
+        case 'name_asc':
+            return strcasecmp($a['name'] ?? '', $b['name'] ?? '');
+        case 'name_desc':
+            return strcasecmp($b['name'] ?? '', $a['name'] ?? '');
+        default:
+            return 0;
+    }
+});
 
 if (isset($_GET['restaurant'])) {
     foreach ($restaurants as $r) {
@@ -66,6 +81,14 @@ $toShow        = array_slice($restaurants, ($page-1)*$itemsPerPage, $itemsPerPag
 $scheme     = isset($_SERVER['HTTPS']) ? 'https' : 'http';
 $currentUrl = "$scheme://{$_SERVER['HTTP_HOST']}{$_SERVER['REQUEST_URI']}";
 
+$keywords = [];
+$keywords[] = "restaurant";
+$keywords[] = "notation";
+$keywords[] = "gastronomie";
+$keywords[] = "bistronomie";
+$keywords[] = "étoilé";
+$keywords[] = "lille";
+
 if ($mode === 'single') {
     $pageTitle = htmlspecialchars($current['name']) . " - Critique Gastronomique de PH";
     $pageDesc  = htmlspecialchars($current['description']);
@@ -73,15 +96,38 @@ if ($mode === 'single') {
     if (!empty($current['externalImageTitle'])) {
         $pageImage = $current['externalImageTitle'];
     } else {
-        $cover     = findCoverImage($baseDir . $current['folder'], "restaurant/{$current['folder']}/");
+        $cover     = findCoverImage($baseDir . $current['folder'] . '/', "restaurant/{$current['folder']}/");
         $pageImage = $cover
             ? "$scheme://{$_SERVER['HTTP_HOST']}/$cover"
             : "$scheme://{$_SERVER['HTTP_HOST']}/default-image.jpg";
     }
+    if (!empty($current['name'])) $keywords[] = $current['name'];
+    if (!empty($current['address'])) $keywords[] = $current['address'];
+    if (!empty($current['website'])) {
+        $host = parse_url($current['website'], PHP_URL_HOST);
+        if ($host) $keywords[] = $host;
+    }
+    if (!empty($current['description'])) {
+        $keywords[] = extractKeywords($current['description']);
+    }
+    $metaKeywords = htmlspecialchars(implode(', ', $keywords), ENT_QUOTES, 'UTF-8');
+
 } else {
     $pageTitle = "Critiques Gastronomiques de PH";
     $pageDesc  = "Avis honnêtes et sans censure sur les restaurants de la région.";
     $pageImage = "$scheme://{$_SERVER['HTTP_HOST']}/icon/ms-icon-310x310.png";
+    foreach ($toShow as $r) {
+        if (!empty($r['name'])) $keywords[] = $r['name'];
+        if (!empty($r['address'])) $keywords[] = $r['address'];
+        if (!empty($r['website'])) {
+            $host = parse_url($r['website'], PHP_URL_HOST);
+            if ($host) $keywords[] = $host;
+        }
+        if (!empty($r['description'])) {
+            $keywords[] = extractKeywords($r['description']);
+        }
+    }
+    $metaKeywords = htmlspecialchars(implode(', ', $keywords), ENT_QUOTES, 'UTF-8');
 }
 
 function cleanAndTruncateDescription($text, $maxLength = 250) {
@@ -97,6 +143,27 @@ function cleanAndTruncateDescription($text, $maxLength = 250) {
     }
     return htmlspecialchars($text . '...', ENT_QUOTES, 'UTF-8');
 }
+
+function extractKeywords(string $text, int $max = 10): string {
+    $stopWords = [
+        'nous', 'vous', 'ils', 'elles', 'avoir', 'être', 'avec', 'sans', 'cela',
+        'cette', 'dans', 'des', 'les', 'aux', 'pour', 'par', 'sur', 'entre',
+        'mais', 'plus', 'trop', 'peu', 'que', 'qui', 'quoi', 'quand', 'donc',
+        'une', 'un', 'le', 'la', 'et', 'du', 'se', 'en', 'au', 'ne', 'pas',
+        'notre', 'avons', 'point'
+    ];
+    $text = str_replace(["\r", "\n", "\t"], ' ', $text);
+    $text = mb_strtolower(strip_tags($text));
+    $text = preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $text);
+    $words = explode(' ', $text);
+    $filtered = array_filter($words, function($w) use ($stopWords) {
+        return mb_strlen($w) > 3 && !in_array($w, $stopWords);
+    });
+    $counts = array_count_values($filtered);
+    arsort($counts);
+    return implode(', ', array_slice(array_keys($counts), 0, $max));
+}
+
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -106,6 +173,7 @@ function cleanAndTruncateDescription($text, $maxLength = 250) {
   <title><?= $pageTitle ?></title>
   <meta name="robots" content="index,follow">
   <meta name="description" content="<?= cleanAndTruncateDescription($pageDesc) ?>">
+  <meta name="keywords" content="<?= $metaKeywords ?>">
   <link rel="canonical" href="<?= $currentUrl ?>">
   <link rel="alternate" type="application/rss+xml" title="Critiques Gastronomiques de PH RSS Feed" href="https://resto.deph.fr/feed" />
   <meta property="og:title" content="<?= $pageTitle ?>">
@@ -231,11 +299,15 @@ function cleanAndTruncateDescription($text, $maxLength = 250) {
       <?php } ?>
     </div>
     <?php
-    $imgs = array_filter(
+    $folderPath = $baseDir . $current['folder'] . '/';
+    $imgs = [];
+    if (is_dir($folderPath)) {
+      $imgs = array_filter(
       scandir($baseDir . $current['folder']),
       fn($f) => preg_match('/\.(png|jpe?g|webp|gif)$/i',$f)
             && !preg_match('/^cover\.(png|jpe?g|webp|gif)$/i',$f)
-    );
+      );
+    }
     $externalImgs = $current['externalImages'] ?? [];
     if ($imgs || $externalImgs):
     ?>

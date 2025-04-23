@@ -9,12 +9,12 @@ function clean($text) {
     return htmlspecialchars(trim($text), ENT_QUOTES, 'UTF-8');
 }
 
-function findCoverImage(string $folderPath): ?string {
+function findCoverImage(string $folderName): ?string {
     $extensions = ['png', 'jpg', 'jpeg', 'webp', 'gif'];
     foreach ($extensions as $ext) {
-        $coverPath = $folderPath . '/cover.' . $ext;
+        $coverPath = __DIR__ . "/restaurant/{$folderName}/cover." . $ext;
         if (file_exists($coverPath)) {
-            return "restaurant/" . basename($folderPath) . "/cover." . $ext;
+            return "restaurant/{$folderName}/cover." . $ext;
         }
     }
     return null;
@@ -23,16 +23,14 @@ function findCoverImage(string $folderPath): ?string {
 $items = [];
 
 if (is_dir($baseDir) && $dh = opendir($baseDir)) {
-    while (($folder = readdir($dh)) !== false) {
-        $path = $baseDir . $folder;
-        if ($folder === '.' || $folder === '..' || !is_dir($path)) continue;
-        $infoFile = $path . '/info.json';
-        if (file_exists($infoFile)) {
-            $data = json_decode(file_get_contents($infoFile), true);
-            if ($data && isset($data['slug'], $data['name'], $data['description'], $data['visitDate'])) {
-                $data['folder'] = $folder;
-                $items[] = $data;
-            }
+    while (($file = readdir($dh)) !== false) {
+        $path = $baseDir . $file;
+        if (!preg_match('/\.json$/', $file)) continue;
+
+        $data = json_decode(file_get_contents($path), true);
+        if ($data && isset($data['slug'], $data['name'], $data['description'], $data['visitDate'])) {
+            $data['folder'] = basename($file, '.json');
+            $items[] = $data;
         }
     }
     closedir($dh);
@@ -53,7 +51,7 @@ echo '<?xml version="1.0" encoding="UTF-8" ?>';
 <?php foreach (array_slice($items, 0, 10) as $item):
     $url = "$scheme://$host/" . urlencode($item['slug']);
     $desc = clean(strip_tags($item['description']));
-    $img = $item['externalImageTitle'] ?? findCoverImage($baseDir . $item['folder']) ?? 'default-image.jpg';
+    $img = $item['externalImageTitle'] ?? findCoverImage($item['folder']) ?? 'default-image.jpg';
     $imgUrl = strpos($img, 'http') === 0 ? $img : "$scheme://$host/$img";
 ?>
     <item>

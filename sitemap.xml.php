@@ -5,19 +5,16 @@ $baseDir = __DIR__ . '/restaurant/';
 $restaurants = [];
 
 if (is_dir($baseDir) && $dh = opendir($baseDir)) {
-    while (($folder = readdir($dh)) !== false) {
-        $path = $baseDir . $folder;
-        if ($folder === '.' || $folder === '..' || !is_dir($path)) {
+    while (($file = readdir($dh)) !== false) {
+        $path = $baseDir . $file;
+        if (!preg_match('/\.json$/', $file)) {
             continue;
         }
-        $infoFile = $path . '/info.json';
-        if (file_exists($infoFile)) {
-            $json = file_get_contents($infoFile);
-            $data = json_decode($json, true);
-            if ($data && isset($data['slug'])) {
-                // Store slug for sitemap entries
-                $restaurants[] = $data['slug'];
-            }
+
+        $json = file_get_contents($path);
+        $data = json_decode($json, true);
+        if ($data && isset($data['slug'])) {
+            $restaurants[] = $data['slug'];
         }
     }
     closedir($dh);
@@ -33,24 +30,25 @@ echo '<?xml version="1.0" encoding="UTF-8"?>';
 
   <url>
     <loc>https://resto.deph.fr/</loc>
-    <changefreq>weekly</changefreq>
+    <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
 
   <?php foreach ($restaurants as $slug): ?>
   <url>
     <loc>https://resto.deph.fr/<?= urlencode($slug) ?></loc>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
   </url>
   <?php endforeach; ?>
 
   <?php for ($page = 2; $page <= $totalPages; $page++): ?>
   <url>
     <loc>https://resto.deph.fr/?page=<?= $page ?></loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
   </url>
   <?php endfor; ?>
 
 </urlset>
+
