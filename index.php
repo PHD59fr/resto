@@ -258,13 +258,13 @@ function cleanAndTruncateDescription($text, $maxLength = 250) {
       ? htmlspecialchars($r['externalImageTitle'])
       : (findCoverImage($baseDir . $r['folder'], "restaurant/{$r['folder']}/") ?? 'default-image.jpg');
     ?>
-    <a title="<?= htmlspecialchars($r['name']) ?>" href="?restaurant=<?= urlencode($r['slug']) ?>">
+    <a title="<?= htmlspecialchars($r['name']) ?>" href="<?= urlencode($r['slug']) ?>">
       <div class="image-wrapper">
         <img class="list-cover" src="<?= $coverImage ?>" alt="<?= htmlspecialchars($r['name']) ?>">
       </div>
     </a>
     <div class="review-content">
-      <h2><a title="<?= htmlspecialchars($r['name']) ?>" href="?restaurant=<?= urlencode($r['slug']) ?>"><?= htmlspecialchars($r['name']) ?></a></h2>
+      <h2><a title="<?= htmlspecialchars($r['name']) ?>" href="<?= urlencode($r['slug']) ?>"><?= htmlspecialchars($r['name']) ?></a></h2>
       <p><strong>Catégorie :</strong> <?= htmlspecialchars($r['category'] ?? '—') ?></p>
       <p>Visité en <?= $v ?></p>
       <?php

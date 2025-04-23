@@ -39,7 +39,7 @@ echo '<?xml version="1.0" encoding="UTF-8"?>';
 
   <?php foreach ($restaurants as $slug): ?>
   <url>
-    <loc>https://resto.deph.fr/?restaurant=<?= urlencode($slug) ?></loc>
+    <loc>https://resto.deph.fr/<?= urlencode($slug) ?></loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
