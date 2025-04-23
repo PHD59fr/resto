@@ -23,7 +23,7 @@ $monthNames = [
 function findCoverImage(string $folderPath, string $relativeUrlPrefix = ''): ?string {
     $extensions = ['png', 'jpg', 'jpeg', 'webp', 'gif'];
     foreach ($extensions as $ext) {
-        $coverPath = $folderPath . '/cover.' . $ext;
+        $coverPath = $folderPath . 'cover.' . $ext;
         if (file_exists($coverPath)) {
             return $relativeUrlPrefix . 'cover.' . $ext;
         }
@@ -32,16 +32,14 @@ function findCoverImage(string $folderPath, string $relativeUrlPrefix = ''): ?st
 }
 
 if (is_dir($baseDir) && $dh = opendir($baseDir)) {
-    while (($folder = readdir($dh)) !== false) {
-        $path = $baseDir . $folder;
-        if ($folder === '.' || $folder === '..' || !is_dir($path)) continue;
-        $infoFile = $path . '/info.json';
-        if (file_exists($infoFile)) {
-            $data = json_decode(file_get_contents($infoFile), true);
-            if ($data && isset($data['slug'])) {
-                $data['folder'] = $folder;
-                $restaurants[] = $data;
-            }
+    while (($file = readdir($dh)) !== false) {
+        $path = $baseDir . $file;
+        if (!preg_match('/\.json$/', $file)) continue;
+
+        $data = json_decode(file_get_contents($path), true);
+        if ($data && isset($data['slug'])) {
+            $data['folder'] = basename($file, '.json');
+            $restaurants[] = $data;
         }
     }
     closedir($dh);
@@ -73,7 +71,7 @@ if ($mode === 'single') {
     if (!empty($current['externalImageTitle'])) {
         $pageImage = $current['externalImageTitle'];
     } else {
-        $cover     = findCoverImage($baseDir . $current['folder'], "restaurant/{$current['folder']}/");
+        $cover     = findCoverImage($baseDir . $current['folder'] . '/', "restaurant/{$current['folder']}/");
         $pageImage = $cover
             ? "$scheme://{$_SERVER['HTTP_HOST']}/$cover"
             : "$scheme://{$_SERVER['HTTP_HOST']}/default-image.jpg";
