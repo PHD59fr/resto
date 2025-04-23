@@ -104,9 +104,13 @@ function cleanAndTruncateDescription($text, $maxLength = 250) {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title><?= $pageTitle ?></title>
+  <meta name="robots" content="index,follow">
   <meta name="description" content="<?= cleanAndTruncateDescription($pageDesc) ?>">
   <link rel="canonical" href="<?= $currentUrl ?>">
+  <link rel="alternate" type="application/rss+xml" title="Critiques Gastronomiques de PH RSS Feed" href="https://resto.deph.fr/feed" />
   <meta property="og:title" content="<?= $pageTitle ?>">
+  <meta property="og:site_name" content="<?= $pageTitle ?>">
+  <meta property="og:url" content="<?= $currentUrl ?>">
   <meta property="og:description" content="<?= cleanAndTruncateDescription($pageDesc) ?>">
   <meta property="og:image" content="<?= $pageImage ?>">
   <meta name="twitter:card" content="summary_large_image">

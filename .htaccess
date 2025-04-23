@@ -1,6 +1,7 @@
 RewriteEngine On
 RewriteBase /
 
+RewriteRule ^feed/?$ feed.php [L,QSA]
 RewriteRule ^sitemap\.xml$ sitemap.xml.php [L,QSA]
 
 RewriteCond %{REQUEST_FILENAME} !-f
